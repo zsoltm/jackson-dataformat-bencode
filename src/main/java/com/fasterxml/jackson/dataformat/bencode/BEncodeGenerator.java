@@ -238,7 +238,10 @@ public class BEncodeGenerator extends JsonGenerator {
 
     @Override
     public void writeNumber(int v) throws IOException, JsonGenerationException {
-
+        writeContext.writeValue();
+        outputContext.write(INTEGER_PREFIX);
+        outputContext.write(Integer.toString(v)); // TODO opt
+        outputContext.write(END_SUFFIX);
     }
 
     @Override
