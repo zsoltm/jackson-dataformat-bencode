@@ -1,6 +1,7 @@
 package com.fasterxml.jackson.dataformat.bencode.context;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.nio.charset.Charset;
 
 public class OutputContext {
@@ -45,11 +46,54 @@ public class OutputContext {
         write(buf);
     }
 
+    public void write(long i) throws IOException {
+        int size = (i < 0) ? stringSize(-i) + 1 : stringSize(i);
+        byte[] buf = new byte[size];
+        getBytes(i, size, buf);
+        write(buf);
+    }
+
+    /**
+     * @param i big int to be encoded
+     * @return integer in base 10 as a byte array;
+     */
+    static byte[] getByteBuf(BigInteger i) {
+        int size = (i.signum() < 0) ? stringSize(i.negate()) + 1 : stringSize(i);
+        byte[] buf = new byte[size];
+        getBytes(i, size, buf);
+        return buf;
+    }
+
+    public void write(BigInteger i) throws IOException {
+        write(getByteBuf(i));
+    }
+
     // Requires positive x
     static int stringSize(int x) {
         for (int i=0; ; i++)
             if (x <= SIZE_TABLE[i])
                 return i+1;
+    }
+
+    // Requires positive x
+    static int stringSize(long x) {
+        long p = 10;
+        for (int i = 1; i < 19; i++) {
+            if (x < p) return i;
+            p = 10 * p;
+        }
+        return 19;
+    }
+
+    static int stringSize(BigInteger x) {
+        BigInteger p = BigInteger.TEN;
+        int i = 1;
+        while (p.compareTo(x) <= 0) { // TODO binarysearch?
+            p = p.multiply(BigInteger.TEN);
+            i++;
+        }
+
+        return i;
     }
 
     final static int [] SIZE_TABLE = {
@@ -104,7 +148,7 @@ public class OutputContext {
             buf [--charPos] = DIGIT_TENS[r];
         }
 
-        // Fall thru to fast mode for smaller numbers
+        // Fall through to fast mode for smaller numbers
         // assert(i <= 65536, i);
         for (;;) {
             q = (i * 52429) >>> (16+3);
@@ -113,6 +157,53 @@ public class OutputContext {
             i = q;
             if (i == 0) break;
         }
+    }
+
+    static void getBytes(long i, int index, byte[] buf) {
+        long q;
+        int r;
+        int charPos = index;
+
+        if (i < 0) {
+            buf[0] = '-';
+            i = -i;
+        }
+
+        // Generate two digits per iteration
+        while (i > Integer.MAX_VALUE) {
+            q = i / 100;
+            // really: r = i - (q * 100);
+            r = (int)(i - ((q << 6) + (q << 5) + (q << 2)));
+            i = q;
+            buf[--charPos] = DIGIT_ONES[r];
+            buf[--charPos] = DIGIT_TENS[r];
+        }
+
+        getBytes((int) i, charPos, buf); // inline for performance improvement?
+    }
+
+    private static BigInteger MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
+    private static BigInteger HUNDRED = BigInteger.valueOf(100);
+
+    static void getBytes(BigInteger i, int index, byte[] buf) {
+        BigInteger q;
+        int r;
+        int charPos = index;
+
+        if (i.signum() < 0) {
+            buf[0] = '-';
+            i = i.negate();
+        }
+
+        while (i.compareTo(MAX_LONG) > 0) {
+            q = i.divide(HUNDRED);
+            r = i.subtract(q.multiply(HUNDRED)).intValue();
+            i = q;
+            buf[--charPos] = DIGIT_ONES[r];
+            buf[--charPos] = DIGIT_TENS[r];
+        }
+
+        getBytes(i.longValue(), charPos, buf);
     }
 
     public void close() throws IOException {
