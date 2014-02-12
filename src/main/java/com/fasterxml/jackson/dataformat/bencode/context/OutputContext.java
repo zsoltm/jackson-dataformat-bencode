@@ -46,22 +46,30 @@ public class OutputContext {
         write(buf);
     }
 
-    public void write(long i) throws IOException {
+    static byte [] getByteBuf(long i) {
         int size = (i < 0) ? stringSize(-i) + 1 : stringSize(i);
         byte[] buf = new byte[size];
         getBytes(i, size, buf);
-        write(buf);
+        return buf;
     }
+
+    public void write(long i) throws IOException {
+        write(getByteBuf(i));
+    }
+
+    static final Charset AS_IS = Charset.forName("ISO-8859-1");
+    static final BigInteger BIG_LONG = BigInteger.valueOf(Long.MAX_VALUE);
 
     /**
      * @param i big int to be encoded
      * @return integer in base 10 as a byte array;
      */
     static byte[] getByteBuf(BigInteger i) {
-        int size = (i.signum() < 0) ? stringSize(i.negate()) + 1 : stringSize(i);
-        byte[] buf = new byte[size];
-        getBytes(i, size, buf);
-        return buf;
+        if (i.compareTo(BIG_LONG) <= 0) {
+            return getByteBuf(i.longValue());
+        }
+
+        return i.toString().getBytes(AS_IS);
     }
 
     public void write(BigInteger i) throws IOException {
@@ -85,18 +93,7 @@ public class OutputContext {
         return 19;
     }
 
-    static int stringSize(BigInteger x) {
-        BigInteger p = BigInteger.TEN;
-        int i = 1;
-        while (p.compareTo(x) <= 0) { // TODO binarysearch?
-            p = p.multiply(BigInteger.TEN);
-            i++;
-        }
-
-        return i;
-    }
-
-    final static int [] SIZE_TABLE = {
+    final static int[] SIZE_TABLE = {
             9, 99, 999, 9999, 99999, 999999, 9999999, 99999999, 999999999, Integer.MAX_VALUE };
 
     final static byte[] DIGIT_ONES = {
@@ -186,7 +183,7 @@ public class OutputContext {
     private static BigInteger HUNDRED = BigInteger.valueOf(100);
 
     static void getBytes(BigInteger i, int index, byte[] buf) {
-        BigInteger q;
+        BigInteger[] div;
         int r;
         int charPos = index;
 
@@ -196,9 +193,9 @@ public class OutputContext {
         }
 
         while (i.compareTo(MAX_LONG) > 0) {
-            q = i.divide(HUNDRED);
-            r = i.subtract(q.multiply(HUNDRED)).intValue();
-            i = q;
+            div = i.divideAndRemainder(HUNDRED);
+            i = div[0];
+            r = div[1].intValue();
             buf[--charPos] = DIGIT_ONES[r];
             buf[--charPos] = DIGIT_TENS[r];
         }

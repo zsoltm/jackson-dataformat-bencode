@@ -12,15 +12,6 @@ import static org.junit.Assert.assertThat;
 
 public class OutputContextTest {
     @Test
-    public void testBigIntegerStringSize() throws Exception {
-        assertThat(OutputContext.stringSize(BigInteger.ZERO), is(1));
-        assertThat(OutputContext.stringSize(BigInteger.ONE), is(1));
-        assertThat(OutputContext.stringSize(BigInteger.TEN), is(2));
-        // 18446744073709551614
-        assertThat(OutputContext.stringSize(BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(1)), is(20));
-    }
-
-    @Test
     public void testWriteInts() throws Exception {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         OutputContext o = new OutputContext(bos, Charset.forName("UTF-8"));
@@ -28,25 +19,22 @@ public class OutputContextTest {
         o.write(BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(1));
         assertThat(bos.toByteArray(), is("18446744073709551614".getBytes("ISO-8859-1")));
 
-        final int reps = 5000;
+        final int reps = 500;
         final Charset asis = Charset.forName("ASCII");
-        BigInteger toBeEncoded = new BigInteger("184467440737095516145");
+        BigInteger toBeEncoded = new BigInteger("34028236692079938463463374607431768211455");
 //        final BigInteger toBeEncoded = new BigInteger("340282366920938463463374607431768211455");
-        int code = 0;
         long time, longLikeTime, stringieTime;
         final int hash = Arrays.hashCode(OutputContext.getByteBuf(toBeEncoded));
 
         time = System.currentTimeMillis();
         for (int i = 0; i < reps; i++) {
-            toBeEncoded = toBeEncoded.add(BigInteger.ONE);
-            assert Arrays.hashCode(toBeEncoded.toString().getBytes(asis)) != hash;
+            assert Arrays.hashCode(toBeEncoded.toString().getBytes(asis)) == hash;
         }
         stringieTime = System.currentTimeMillis() - time;
 
         time = System.currentTimeMillis();
         for (int i = 0; i < reps; i++) {
-            toBeEncoded = toBeEncoded.add(BigInteger.ONE);
-            assert Arrays.hashCode(OutputContext.getByteBuf(toBeEncoded)) != hash;
+            assert Arrays.hashCode(OutputContext.getByteBuf(toBeEncoded)) == hash;
         }
         longLikeTime = System.currentTimeMillis() - time;
 
