@@ -1,8 +1,9 @@
 
 A good standalone impl:
     https://github.com/ffbit/bencode
-    
-https://github.com/FasterXML/jackson-dataformat-csv/
+
+Reference custom dataformat impl:
+    https://github.com/FasterXML/jackson-dataformat-csv/
 
 Todo:
     - performance check; consider custom buffering, byte array API methods

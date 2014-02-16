@@ -40,6 +40,5 @@ public class IOOutputContextTest {
 
         System.out.println(String.format("longlike: %d", longLikeTime));
         System.out.println(String.format("stringie: %d", stringieTime));
-
     }
 }

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
@@ -12,7 +11,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
-public class TestStreamingGen {
+public class TestStreamingWrite {
     protected BEncodeFactory bEncodeFactory = new BEncodeFactory();
     protected BEncodeGenerator underTest; // generator under test
     protected ByteArrayOutputStream out;
@@ -25,28 +24,24 @@ public class TestStreamingGen {
         underTest = bEncodeFactory.createGenerator(out);
     }
 
-
     @Test
     public void testSimpleEntities() throws Exception {
     }
 
     @Test
     public void tutorialTest() throws Exception {
-        byte [] binaryData = DatatypeConverter.parseHexBinary("E3811B9539CACFF680E418124272177C47477157");
-
         underTest.writeStartObject();
         underTest.writeStringField("gender", Gender.MALE.name());
         underTest.writeObjectFieldStart("name");
         underTest.writeStringField("first", "Joe");
         underTest.writeStringField("last", "Sixpack");
         underTest.writeEndObject();
-        underTest.writeBinaryField("userImage", binaryData);
+        underTest.writeBinaryField("userImage", TestUtils.BINARY_DATA);
         underTest.writeBooleanField("verified", false);
         underTest.writeEndObject();
         underTest.close();
 
-        assertThat(out.toString("ISO-8859-1"), is("d6:gender4:MALE4:named5:first3:Joe4:last7:Sixpacke9:userImage20:" +
-                new String(binaryData, "ISO-8859-1") + "8:verified5:falsee"));
+        assertThat(out.toString("ISO-8859-1"), is(TestUtils.TUTORIAL_EXAMPLE_ENCODED));
     }
 
     @Test

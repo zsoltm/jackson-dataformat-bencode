@@ -1,14 +1,22 @@
 package com.fasterxml.jackson.dataformat.bencode;
 
-import com.fasterxml.jackson.core.*;
+import com.fasterxml.jackson.core.FormatSchema;
+import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.format.InputAccessor;
 import com.fasterxml.jackson.core.format.MatchStrength;
 import com.fasterxml.jackson.dataformat.bencode.context.IOOutputContext;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Writer;
 import java.nio.charset.Charset;
 
-public class BEncodeFactory extends JsonFactory { // TODO do we need to inherit from it?
+public class BEncodeFactory extends JsonFactory {
     /**
      * Name used to identify JSON format
      * (and returned by {@link #getFormatName()}
