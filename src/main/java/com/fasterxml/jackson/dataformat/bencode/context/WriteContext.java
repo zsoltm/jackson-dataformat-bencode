@@ -47,7 +47,7 @@ public class WriteContext {
     }
 
     public Expect writeKey(String key) throws JsonProcessingException {
-        throw new JsonGenerationException("not in dict");
+        throw new JsonGenerationException("not in dictionary");
     }
 
     public WriteContext changeToParent() throws JsonProcessingException {

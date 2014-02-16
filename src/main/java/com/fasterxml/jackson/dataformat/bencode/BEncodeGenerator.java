@@ -1,13 +1,14 @@
 package com.fasterxml.jackson.dataformat.bencode;
 
 import com.fasterxml.jackson.core.*;
-import com.fasterxml.jackson.dataformat.bencode.context.OutputContext;
+import com.fasterxml.jackson.dataformat.bencode.context.IOOutputContext;
 import com.fasterxml.jackson.dataformat.bencode.context.WriteContext;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 
 /**
  * Writer Based
@@ -19,13 +20,16 @@ public class BEncodeGenerator extends JsonGenerator {
     static final byte DICTIONARY_PREFIX = 'd';
     static final byte END_SUFFIX = 'e';
     static final byte STRING_SEPARATOR = ':';
+    static final Charset UTF_8 = Charset.forName("UTF-8");
 
-    private final OutputContext outputContext;
+    private final IOOutputContext outputContext;
     private WriteContext writeContext;
+
+    private static final byte[] NULL_VALUE = ("4" + (char) STRING_SEPARATOR + "null").getBytes();
     private static final byte[] TRUE_VALUE = ("4" + (char) STRING_SEPARATOR + "true").getBytes();
     private static final byte[] FALSE_VALUE = ("5" + (char) STRING_SEPARATOR + "false").getBytes();
 
-    public BEncodeGenerator(int features, ObjectCodec codec, OutputContext outputContext) {
+    public BEncodeGenerator(int features, ObjectCodec codec, IOOutputContext outputContext) {
         writeContext = new WriteContext();
         this.outputContext = outputContext;
 //        _outputBuffer = ctxt.allocConcatBuffer();
@@ -95,17 +99,17 @@ public class BEncodeGenerator extends JsonGenerator {
 
     @Override
     public void writeRawValue(String text) throws IOException, JsonGenerationException {
-
+        writeString(text);
     }
 
     @Override
     public void writeRawValue(String text, int offset, int len) throws IOException, JsonGenerationException {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void writeRawValue(char[] text, int offset, int len) throws IOException, JsonGenerationException {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -115,12 +119,12 @@ public class BEncodeGenerator extends JsonGenerator {
 
     @Override
     public void writeObject(Object pojo) throws IOException, JsonProcessingException {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void writeTree(TreeNode rootNode) throws IOException, JsonProcessingException {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -146,11 +150,15 @@ public class BEncodeGenerator extends JsonGenerator {
     @Override
     public void writeStartArray() throws IOException, JsonGenerationException {
         writeContext.writeValue();
+        writeContext = writeContext.createChildList();
+        outputContext.write(LIST_PREFIX);
     }
 
     @Override
     public void writeEndArray() throws IOException, JsonGenerationException {
         if (!writeContext.inList()) throw new JsonGenerationException("not in list");
+        writeContext = writeContext.changeToParent();
+        outputContext.write(END_SUFFIX);
     }
 
     @Override
@@ -185,48 +193,54 @@ public class BEncodeGenerator extends JsonGenerator {
     }
 
     private void encodeString(String text) throws IOException {
-        encodeLength(getRawLengthAccordingToEncoding(text));
-        outputContext.write(text);
-    }
-
-    private int getRawLengthAccordingToEncoding(String text) {
-        // outputContext.getCharset();
-        return text.length(); // TODO implement for UTF-8, and other common encodings
+        byte[] bytes = text.getBytes(outputContext.getCharset());
+        encodeLength(bytes.length);
+        outputContext.write(bytes);
     }
 
     @Override
     public void writeString(char[] text, int offset, int len) throws IOException, JsonGenerationException {
-
+        writeString(String.valueOf(text, offset, len));
     }
 
     @Override
     public void writeRawUTF8String(byte[] text, int offset, int length) throws IOException, JsonGenerationException {
-
+        writeContext.writeValue();
+        if (outputContext.getCharset().equals(UTF_8)) {
+            encodeLength(length);
+            outputContext.write(text, offset, length);
+        } else {
+            byte[] reEncoded = new String(text, offset, length, UTF_8).getBytes();
+            encodeLength(reEncoded.length);
+            outputContext.write(reEncoded);
+        }
     }
 
     @Override
     public void writeUTF8String(byte[] text, int offset, int length) throws IOException, JsonGenerationException {
-
+        writeRawUTF8String(text, offset, length);
     }
 
     @Override
     public void writeRaw(String text) throws IOException, JsonGenerationException {
-
+        outputContext.write(text);
     }
 
     @Override
     public void writeRaw(String text, int offset, int len) throws IOException, JsonGenerationException {
-
+        char[] dst = new char[len];
+        text.getChars(offset, offset + len, dst, 0);
+        writeRaw(dst, 0, len);
     }
 
     @Override
     public void writeRaw(char[] text, int offset, int len) throws IOException, JsonGenerationException {
-
+        outputContext.write(text, offset, len);
     }
 
     @Override
     public void writeRaw(char c) throws IOException, JsonGenerationException {
-
+        outputContext.write(String.valueOf(c));
     }
 
     @Override
@@ -262,22 +276,22 @@ public class BEncodeGenerator extends JsonGenerator {
 
     @Override
     public void writeNumber(double d) throws IOException, JsonGenerationException {
-
+        throw new UnsupportedOperationException("floating point types are not supported by BEncode specification");
     }
 
     @Override
     public void writeNumber(float f) throws IOException, JsonGenerationException {
-
+        throw new UnsupportedOperationException("floating point types are not supported by BEncode specification");
     }
 
     @Override
     public void writeNumber(BigDecimal dec) throws IOException, JsonGenerationException {
-
+        throw new UnsupportedOperationException("floating point types are not supported by BEncode specification");
     }
 
     @Override
     public void writeNumber(String encodedValue) throws IOException, JsonGenerationException, UnsupportedOperationException {
-
+        writeString(encodedValue);
     }
 
     @Override
@@ -288,6 +302,7 @@ public class BEncodeGenerator extends JsonGenerator {
 
     @Override
     public void writeNull() throws IOException, JsonGenerationException {
-
+        writeContext.writeValue();
+        outputContext.write(NULL_VALUE);
     }
 }

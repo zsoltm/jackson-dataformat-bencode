@@ -3,7 +3,7 @@ package com.fasterxml.jackson.dataformat.bencode;
 import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.core.format.InputAccessor;
 import com.fasterxml.jackson.core.format.MatchStrength;
-import com.fasterxml.jackson.dataformat.bencode.context.OutputContext;
+import com.fasterxml.jackson.dataformat.bencode.context.IOOutputContext;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -69,7 +69,7 @@ public class BEncodeFactory extends JsonFactory { // TODO do we need to inherit 
 
     @Override
     public BEncodeGenerator createGenerator(OutputStream out, JsonEncoding enc) throws IOException {
-        return new BEncodeGenerator(0, _objectCodec, new OutputContext(out, Charset.forName(enc.getJavaName()))); // TODO handle features
+        return new BEncodeGenerator(0, _objectCodec, new IOOutputContext(out, Charset.forName(enc.getJavaName()))); // TODO handle features
     }
 
     @Override
