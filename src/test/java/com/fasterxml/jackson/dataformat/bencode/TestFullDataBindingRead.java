@@ -18,7 +18,6 @@ public class TestFullDataBindingRead {
         underTest = new BEncodeMapper();
     }
 
-    @Ignore("not ready yet")
     @Test
     public void testReadValueFromStream() throws Exception {
         InputStream in = new ByteArrayInputStream(TestUtils.TUTORIAL_EXAMPLE_ENCODED.getBytes("ISO-8859-1"));
