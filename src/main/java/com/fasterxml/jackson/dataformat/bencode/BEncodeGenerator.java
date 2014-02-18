@@ -1,36 +1,41 @@
 package com.fasterxml.jackson.dataformat.bencode;
 
-import com.fasterxml.jackson.core.*;
+import com.fasterxml.jackson.core.Base64Variant;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonStreamContext;
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.core.SerializableString;
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.core.Version;
+import com.fasterxml.jackson.dataformat.bencode.context.BContext;
 import com.fasterxml.jackson.dataformat.bencode.context.IOOutputContext;
-import com.fasterxml.jackson.dataformat.bencode.context.WriteContext;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.charset.Charset;
+
+import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.DICTIONARY_PREFIX;
+import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.END_SUFFIX;
+import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.INTEGER_PREFIX;
+import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.LIST_PREFIX;
+import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.STRING_SEPARATOR;
+import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.UTF_8;
 
 /**
  * Writer Based
  */
 public class BEncodeGenerator extends JsonGenerator {
-
-    static final byte INTEGER_PREFIX = 'i';
-    static final byte LIST_PREFIX = 'l';
-    static final byte DICTIONARY_PREFIX = 'd';
-    static final byte END_SUFFIX = 'e';
-    static final byte STRING_SEPARATOR = ':';
-    static final Charset UTF_8 = Charset.forName("UTF-8");
-
     private final IOOutputContext outputContext;
-    private WriteContext writeContext;
+    private BContext bContext;
 
     private static final byte[] NULL_VALUE = ("4" + (char) STRING_SEPARATOR + "null").getBytes();
     private static final byte[] TRUE_VALUE = ("4" + (char) STRING_SEPARATOR + "true").getBytes();
     private static final byte[] FALSE_VALUE = ("5" + (char) STRING_SEPARATOR + "false").getBytes();
 
     public BEncodeGenerator(int features, ObjectCodec codec, IOOutputContext outputContext) {
-        writeContext = new WriteContext();
+        bContext = new BContext();
         this.outputContext = outputContext;
 //        _outputBuffer = ctxt.allocConcatBuffer();
 //        _outputEnd = _outputBuffer.length;
@@ -88,42 +93,42 @@ public class BEncodeGenerator extends JsonGenerator {
     }
 
     @Override
-    public void writeFieldName(SerializableString name) throws IOException, JsonGenerationException {
+    public void writeFieldName(SerializableString name) throws IOException {
         writeFieldName(name.getValue());
     }
 
     @Override
-    public void writeString(SerializableString text) throws IOException, JsonGenerationException {
+    public void writeString(SerializableString text) throws IOException {
         writeString(text.getValue());
     }
 
     @Override
-    public void writeRawValue(String text) throws IOException, JsonGenerationException {
+    public void writeRawValue(String text) throws IOException {
         writeString(text);
     }
 
     @Override
-    public void writeRawValue(String text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeRawValue(String text, int offset, int len) throws IOException {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void writeRawValue(char[] text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeRawValue(char[] text, int offset, int len) throws IOException {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public int writeBinary(Base64Variant b64variant, InputStream data, int dataLength) throws IOException, JsonGenerationException {
+    public int writeBinary(Base64Variant b64variant, InputStream data, int dataLength) throws IOException {
         return 0;
     }
 
     @Override
-    public void writeObject(Object pojo) throws IOException, JsonProcessingException {
+    public void writeObject(Object pojo) throws IOException {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void writeTree(TreeNode rootNode) throws IOException, JsonProcessingException {
+    public void writeTree(TreeNode rootNode) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -148,42 +153,42 @@ public class BEncodeGenerator extends JsonGenerator {
     }
 
     @Override
-    public void writeStartArray() throws IOException, JsonGenerationException {
-        writeContext.writeValue();
-        writeContext = writeContext.createChildList();
+    public void writeStartArray() throws IOException {
+        bContext.valueNext();
+        bContext = bContext.createChildList();
         outputContext.write(LIST_PREFIX);
     }
 
     @Override
-    public void writeEndArray() throws IOException, JsonGenerationException {
-        if (!writeContext.inList()) throw new JsonGenerationException("not in list");
-        writeContext = writeContext.changeToParent();
+    public void writeEndArray() throws IOException {
+        if (!bContext.inList()) throw new JsonGenerationException("not in list");
+        bContext = bContext.changeToParent();
         outputContext.write(END_SUFFIX);
     }
 
     @Override
-    public void writeStartObject() throws IOException, JsonGenerationException {
-        writeContext.writeValue();
-        writeContext = writeContext.createChildDictionary();
+    public void writeStartObject() throws IOException {
+        bContext.valueNext();
+        bContext = bContext.createChildDictionary();
         outputContext.write(DICTIONARY_PREFIX);
     }
 
     @Override
-    public void writeEndObject() throws IOException, JsonGenerationException {
-        if (!writeContext.inDict()) throw new JsonGenerationException("not in dictionary");
-        writeContext = writeContext.changeToParent();
+    public void writeEndObject() throws IOException {
+        if (!bContext.inDict()) throw new JsonGenerationException("not in dictionary");
+        bContext = bContext.changeToParent();
         outputContext.write(END_SUFFIX);
     }
 
     @Override
-    public void writeFieldName(String name) throws IOException, JsonGenerationException {
-        writeContext.writeKey(name);
+    public void writeFieldName(String name) throws IOException {
+        bContext.keyNext(name);
         encodeString(name);
     }
 
     @Override
-    public void writeString(String text) throws IOException, JsonGenerationException {
-        writeContext.writeValue();
+    public void writeString(String text) throws IOException {
+        bContext.valueNext();
         encodeString(text);
     }
 
@@ -199,13 +204,13 @@ public class BEncodeGenerator extends JsonGenerator {
     }
 
     @Override
-    public void writeString(char[] text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeString(char[] text, int offset, int len) throws IOException {
         writeString(String.valueOf(text, offset, len));
     }
 
     @Override
-    public void writeRawUTF8String(byte[] text, int offset, int length) throws IOException, JsonGenerationException {
-        writeContext.writeValue();
+    public void writeRawUTF8String(byte[] text, int offset, int length) throws IOException {
+        bContext.valueNext();
         if (outputContext.getCharset().equals(UTF_8)) {
             encodeLength(length);
             outputContext.write(text, offset, length);
@@ -217,92 +222,92 @@ public class BEncodeGenerator extends JsonGenerator {
     }
 
     @Override
-    public void writeUTF8String(byte[] text, int offset, int length) throws IOException, JsonGenerationException {
+    public void writeUTF8String(byte[] text, int offset, int length) throws IOException {
         writeRawUTF8String(text, offset, length);
     }
 
     @Override
-    public void writeRaw(String text) throws IOException, JsonGenerationException {
+    public void writeRaw(String text) throws IOException {
         outputContext.write(text);
     }
 
     @Override
-    public void writeRaw(String text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeRaw(String text, int offset, int len) throws IOException {
         char[] dst = new char[len];
         text.getChars(offset, offset + len, dst, 0);
         writeRaw(dst, 0, len);
     }
 
     @Override
-    public void writeRaw(char[] text, int offset, int len) throws IOException, JsonGenerationException {
+    public void writeRaw(char[] text, int offset, int len) throws IOException {
         outputContext.write(text, offset, len);
     }
 
     @Override
-    public void writeRaw(char c) throws IOException, JsonGenerationException {
+    public void writeRaw(char c) throws IOException {
         outputContext.write(String.valueOf(c));
     }
 
     @Override
-    public void writeBinary(Base64Variant b64variant, byte[] data, int offset, int len) throws IOException, JsonGenerationException {
-        writeContext.writeValue();
+    public void writeBinary(Base64Variant b64variant, byte[] data, int offset, int len) throws IOException {
+        bContext.valueNext();
         encodeLength(len);
         outputContext.write(data, offset, len);
     }
 
     @Override
-    public void writeNumber(int v) throws IOException, JsonGenerationException {
-        writeContext.writeValue();
+    public void writeNumber(int v) throws IOException {
+        bContext.valueNext();
         outputContext.write(INTEGER_PREFIX);
         outputContext.write(v);
         outputContext.write(END_SUFFIX);
     }
 
     @Override
-    public void writeNumber(long v) throws IOException, JsonGenerationException {
-        writeContext.writeValue();
+    public void writeNumber(long v) throws IOException {
+        bContext.valueNext();
         outputContext.write(INTEGER_PREFIX);
         outputContext.write(v);
         outputContext.write(END_SUFFIX);
     }
 
     @Override
-    public void writeNumber(BigInteger v) throws IOException, JsonGenerationException {
-        writeContext.writeValue();
+    public void writeNumber(BigInteger v) throws IOException {
+        bContext.valueNext();
         outputContext.write(INTEGER_PREFIX);
         outputContext.write(v.toString());
         outputContext.write(END_SUFFIX);
     }
 
     @Override
-    public void writeNumber(double d) throws IOException, JsonGenerationException {
+    public void writeNumber(double d) throws IOException {
         throw new UnsupportedOperationException("floating point types are not supported by BEncode specification");
     }
 
     @Override
-    public void writeNumber(float f) throws IOException, JsonGenerationException {
+    public void writeNumber(float f) throws IOException {
         throw new UnsupportedOperationException("floating point types are not supported by BEncode specification");
     }
 
     @Override
-    public void writeNumber(BigDecimal dec) throws IOException, JsonGenerationException {
+    public void writeNumber(BigDecimal dec) throws IOException {
         throw new UnsupportedOperationException("floating point types are not supported by BEncode specification");
     }
 
     @Override
-    public void writeNumber(String encodedValue) throws IOException, JsonGenerationException, UnsupportedOperationException {
+    public void writeNumber(String encodedValue) throws IOException {
         writeString(encodedValue);
     }
 
     @Override
-    public void writeBoolean(boolean state) throws IOException, JsonGenerationException {
-        writeContext.writeValue();
+    public void writeBoolean(boolean state) throws IOException {
+        bContext.valueNext();
         outputContext.write(state ? TRUE_VALUE : FALSE_VALUE);
     }
 
     @Override
-    public void writeNull() throws IOException, JsonGenerationException {
-        writeContext.writeValue();
+    public void writeNull() throws IOException {
+        bContext.valueNext();
         outputContext.write(NULL_VALUE);
     }
 }

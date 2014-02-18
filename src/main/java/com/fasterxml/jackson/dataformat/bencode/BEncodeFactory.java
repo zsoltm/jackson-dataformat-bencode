@@ -101,6 +101,6 @@ public class BEncodeFactory extends JsonFactory {
 
     @Override
     public JsonParser createParser(InputStream in) throws IOException, JsonParseException {
-        return new BEncodeParser(_objectCodec);
+        return new BEncodeParser(in, _objectCodec);
     }
 }
