@@ -5,12 +5,11 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.dataformat.bencode.MutableLocation;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 
 public class NumberContext {
-    private InputStream in;
+    private final StreamInputContext sic;
     private MutableLocation mutableLocation;
 
     /** including possible leading minus (-) sign, should be >= 20. */
@@ -23,12 +22,18 @@ public class NumberContext {
     private static byte[] MIN_LONG_STR = "-9223372036854775808".getBytes(Charset.forName("ISO-8859-1"));
     private static byte[] MIN_INT_STR = "-2147483648".getBytes(Charset.forName("ISO-8859-1"));
 
-    public NumberContext(InputStream in, MutableLocation mutableLocation) {
-        this.in = in;
+    private int numberLength;
+    private JsonParser.NumberType currentType;
+    private int currentPtr;
+    private boolean currentNegative;
+
+    public NumberContext(StreamInputContext sic, MutableLocation mutableLocation) {
+        this.sic = sic;
         this.mutableLocation = mutableLocation;
+        resetCurrentGuess();
     }
 
-    final boolean isLatinDigit(byte c) {
+    public final boolean isLatinDigit(byte c) {
         return c >= '0' && c <= '9';
     }
 
@@ -48,16 +53,6 @@ public class NumberContext {
         return numberLength;
     }
 
-    int tryReadN(int offset, int length) throws IOException {
-        int sumLen = 0, currentLen;
-
-        while ((sumLen < length) && (currentLen = in.read(numBuf, offset + sumLen, length - sumLen)) > 0) {
-            sumLen += currentLen;
-        }
-
-        return sumLen;
-    }
-
     int compareBytes(byte[] a, int offset) {
         for (byte ca : a) {
             if (ca < numBuf[offset]) return -1;
@@ -69,86 +64,112 @@ public class NumberContext {
     public JsonParser.NumberType guessType() throws IOException {
         // only int -> long -> BigInt need to be handled
         final int readBytes = MIN_LONG_STR.length + 1;
-        int numberLength = 0;
-        in.mark(readBytes); // TODO avoid mark / skip by using a shared input context!
+        sic.mark(readBytes);
 
         try {
-            numberLength = determineNumberLength(0, tryReadN(0, readBytes));
+            numberLength = determineNumberLength(0, sic.read(numBuf, 0, readBytes));
             if (numberLength == 0) throw new JsonParseException(
-                    "tried to guess number with insufficient input available", mutableLocation.getJsonLocation(in));
+                    "tried to guess number with insufficient input available", mutableLocation.getJsonLocation(null));
 
-            final boolean negative = numBuf[0] == '-';
-            final byte[] int_str = negative ? MIN_INT_STR : MAX_INT_STR;
-            final byte[] long_str = negative ? MIN_LONG_STR : MAX_LONG_STR;
+            currentPtr = numberLength;
+            currentNegative = numBuf[0] == '-';
+            final byte[] int_str = currentNegative ? MIN_INT_STR : MAX_INT_STR;
+            final byte[] long_str = currentNegative ? MIN_LONG_STR : MAX_LONG_STR;
 
             if (numberLength < int_str.length) {
-                return JsonParser.NumberType.INT;
+                return (currentType = JsonParser.NumberType.INT);
             }
 
             if (numberLength < long_str.length) {
-                return numberLength == int_str.length && compareBytes(int_str, 0) >= 0 ?
-                        JsonParser.NumberType.INT : JsonParser.NumberType.LONG;
+                return (currentType = numberLength == int_str.length && compareBytes(int_str, 0) >= 0 ?
+                        JsonParser.NumberType.INT : JsonParser.NumberType.LONG);
             }
 
-            return numberLength == long_str.length && compareBytes(long_str, 0) >= 0 ?
-                    JsonParser.NumberType.LONG : JsonParser.NumberType.BIG_INTEGER;
+            return (currentType = numberLength == long_str.length && compareBytes(long_str, 0) >= 0 ?
+                    JsonParser.NumberType.LONG : JsonParser.NumberType.BIG_INTEGER);
         } finally {
-            in.reset();
-            in.skip(numberLength);
+            sic.reset();
         }
     }
 
-    private int parseNum(int bufStartOffset, byte expectedEnd) throws IOException {
-        // TODO update mutableLocation
-        in.mark(numBuf.length + 1 - bufStartOffset);
-        int read = in.read(numBuf, bufStartOffset, numBuf.length - bufStartOffset) + bufStartOffset;
-        if (read < 1) throw new JsonParseException("invalid number", mutableLocation.getJsonLocation(in));
-        boolean negative = numBuf[0] == '-';
-        int processed = 0;
-        if (negative) {
-            processed = 1;
-            if (read < 2) throw new JsonParseException("invalid number", mutableLocation.getJsonLocation(in));
-        }
-        in.reset();
-        byte token = -1;
-        int result = 0;
-
-        while (processed < read && (token = numBuf[processed++]) != expectedEnd) {
-            result *= 10;
-            if (token >= '0' && token <= '9') {
-                token -= '0';
-                result += token;
-            } else {
-                throw new JsonParseException(
-                        "unexpected input while parsing a number", mutableLocation.getJsonLocation(in));
-            }
-        }
-
-        if (token != expectedEnd || token == -1) throw new JsonParseException(
-                "invalid number", mutableLocation.getJsonLocation(in));
-
-        return result;
+    private void ensureGuessPerformed() {
+        if (numberLength < 0) throw new IllegalStateException("number size should be guessed before parse");
     }
 
-    public int parseInt(byte firstToken, byte expectedEnd) throws IOException {
-        numBuf[0] = firstToken;
-        return parseNum(1, expectedEnd);
+    private void resetCurrentGuess() {
+        numberLength = -1;
     }
 
-    public int parseInt() {
-        return -1; // TODO implement
+    private int determineParseLength(JsonParser.NumberType expectedTye, int positiveLen, int negativeLen) {
+        return currentType == expectedTye ?
+                (currentNegative ? 1 : 0) :
+                (currentNegative ?
+                        Math.max(numberLength - negativeLen, 0) + 2 :
+                        Math.max(numberLength - positiveLen, 0) + 1);
+    }
+
+    private int parseIntInternal() {
+        int endIndex = determineParseLength(JsonParser.NumberType.INT, MAX_INT_STR.length, MIN_INT_STR.length);
+        int value = 0;
+
+        while (currentPtr-- > endIndex) {
+            value *= 10;
+            value += numBuf[currentPtr] - '0';
+        }
+
+        return value;
+    }
+
+    private long parseLongInternal(int carry) {
+        int endIndex = determineParseLength(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_INT_STR.length);
+        long value = carry;
+
+        while (currentPtr-- > endIndex) {
+            value *= 10;
+            value += numBuf[currentPtr] - '0';
+        }
+
+        return value;
+    }
+
+    private BigInteger parseBigIntegerInternal(long carry) {
+        int endIndex = determineParseLength(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_INT_STR.length);
+        BigInteger value = BigInteger.valueOf(carry);
+
+        while (currentPtr-- > endIndex) {
+            value = value.multiply(BigInteger.TEN);
+            value = value.add(BigInteger.valueOf(numBuf[currentPtr] - '0'));
+        }
+
+        return value;
+    }
+
+    public int parseInt() throws JsonParseException {
+        ensureGuessPerformed();
+        if (currentType != JsonParser.NumberType.INT) throw new IllegalStateException("type mismatch");
+        int value = parseIntInternal();
+        resetCurrentGuess();
+        return currentNegative && value > 0 ? -value : value;
+    }
+
+    public long parseLong() {
+        ensureGuessPerformed();
+        if (currentType != JsonParser.NumberType.LONG) throw new IllegalStateException("type mismatch");
+        long value = parseLongInternal(parseIntInternal());
+        resetCurrentGuess();
+        return currentNegative && value > 0 ? -value : value;
+
+    }
+
+    public BigInteger parseBigInteger() {
+        ensureGuessPerformed();
+        if (currentType != JsonParser.NumberType.BIG_INTEGER) throw new IllegalStateException("type mismatch");
+        BigInteger value = parseBigIntegerInternal(parseLongInternal(parseIntInternal()));
+        resetCurrentGuess();
+        return value;
     }
 
     public Number parseNumber() {
         return null; // TODO implement
-    }
-
-    public long parseLong() {
-        return -1l; // TODO implement
-    }
-
-
-    public BigInteger parseBigInteger() {
-        return null;  // TODO implement
     }
 }

@@ -6,12 +6,12 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
-public class IOOutputContext implements OutputContext {
+public class StreamOutputContext implements OutputContext {
     private final Charset charset;
     private OutputStream outputStream;
     private Writer writer;
 
-    public IOOutputContext(OutputStream outputStream, Charset charset) {
+    public StreamOutputContext(OutputStream outputStream, Charset charset) {
         this.charset = charset;
         this.outputStream = outputStream;
     }

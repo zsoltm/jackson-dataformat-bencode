@@ -10,11 +10,11 @@ import java.util.Arrays;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
-public class IOOutputContextTest {
+public class StreamOutputContextTest {
     @Test
     public void testWriteInts() throws Exception {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        IOOutputContext o = new IOOutputContext(bos, Charset.forName("UTF-8"));
+        StreamOutputContext o = new StreamOutputContext(bos, Charset.forName("UTF-8"));
 
         o.write(BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(1));
         assertThat(bos.toByteArray(), is("18446744073709551614".getBytes("ISO-8859-1")));
@@ -24,7 +24,7 @@ public class IOOutputContextTest {
         BigInteger toBeEncoded = new BigInteger("34028236692079938463463374607431768211455");
 //        final BigInteger toBeEncoded = new BigInteger("340282366920938463463374607431768211455");
         long time, longLikeTime, stringieTime;
-        final int hash = Arrays.hashCode(IOOutputContext.getByteBuf(toBeEncoded));
+        final int hash = Arrays.hashCode(StreamOutputContext.getByteBuf(toBeEncoded));
 
         time = System.currentTimeMillis();
         for (int i = 0; i < reps; i++) {
@@ -34,7 +34,7 @@ public class IOOutputContextTest {
 
         time = System.currentTimeMillis();
         for (int i = 0; i < reps; i++) {
-            assert Arrays.hashCode(IOOutputContext.getByteBuf(toBeEncoded)) == hash;
+            assert Arrays.hashCode(StreamOutputContext.getByteBuf(toBeEncoded)) == hash;
         }
         longLikeTime = System.currentTimeMillis() - time;
 

@@ -9,7 +9,7 @@ import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.format.InputAccessor;
 import com.fasterxml.jackson.core.format.MatchStrength;
-import com.fasterxml.jackson.dataformat.bencode.context.IOOutputContext;
+import com.fasterxml.jackson.dataformat.bencode.context.StreamOutputContext;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -80,7 +80,7 @@ public class BEncodeFactory extends JsonFactory {
 
     @Override
     public BEncodeGenerator createGenerator(OutputStream out, JsonEncoding enc) throws IOException {
-        return new BEncodeGenerator(0, _objectCodec, new IOOutputContext(out, Charset.forName(enc.getJavaName()))); // TODO handle features
+        return new BEncodeGenerator(0, _objectCodec, new StreamOutputContext(out, Charset.forName(enc.getJavaName()))); // TODO handle features
     }
 
     @Override

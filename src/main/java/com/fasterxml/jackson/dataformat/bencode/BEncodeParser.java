@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.base.ParserMinimalBase;
 import com.fasterxml.jackson.dataformat.bencode.context.BContext;
 import com.fasterxml.jackson.dataformat.bencode.context.NumberContext;
+import com.fasterxml.jackson.dataformat.bencode.context.StreamInputContext;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -21,14 +22,13 @@ import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.DICTIONARY_
 import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.END_SUFFIX;
 import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.INTEGER_PREFIX;
 import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.LIST_PREFIX;
-import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.STRING_SEPARATOR;
 import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.UTF_8;
 import static com.fasterxml.jackson.dataformat.bencode.PackageVersion.VERSION;
 
 public class BEncodeParser extends ParserMinimalBase {
 
     private ObjectCodec codec;
-    private InputStream in;
+    private StreamInputContext in;
     private boolean closed = false;
     private BContext ctx = new BContext();
     private int nextStringLength;
@@ -38,9 +38,9 @@ public class BEncodeParser extends ParserMinimalBase {
 
     public BEncodeParser(InputStream in, ObjectCodec codec) {
         this.codec = codec;
-        this.in = in.markSupported() ? in : new BufferedInputStream(in);
+        this.in = new StreamInputContext(in.markSupported() ? in : new BufferedInputStream(in));
         mutableLocation = new MutableLocation();
-        numberContext = new NumberContext(in, mutableLocation);
+        numberContext = new NumberContext(this.in, mutableLocation);
         lastTokenLocation = mutableLocation.newInstance();
     }
 
@@ -51,7 +51,9 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public JsonToken nextToken() throws IOException {
+        in.mark(1);
         int token = in.read();
+        in.reset();
         lastTokenLocation = mutableLocation.newInstance();
 
         if (token == -1) {
@@ -65,22 +67,31 @@ public class BEncodeParser extends ParserMinimalBase {
                 case DICTIONARY_PREFIX:
                     ctx.valueNext();
                     ctx = ctx.createChildDictionary();
+                    in.skip(1);
                     return ctx.getStartToken();
                 case LIST_PREFIX:
                     ctx.valueNext();
                     ctx = ctx.createChildList();
+                    in.skip(1);
                     return ctx.getStartToken();
                 case END_SUFFIX:
                     returnToken = ctx.getEndToken();
                     ctx = ctx.changeToParent();
+                    in.skip(1);
                     return returnToken;
                 case INTEGER_PREFIX:
                     ctx.valueNext();
+                    in.skip(1);
                     return JsonToken.VALUE_NUMBER_INT;
             }
 
+
             if (token >= '0' && token <= '9') {
-                nextStringLength = numberContext.parseInt((byte) token, STRING_SEPARATOR);
+                if (numberContext.guessType() != NumberType.INT)
+                    throw new JsonParseException("size overflow", getCurrentLocation());
+                nextStringLength = numberContext.parseInt();
+                if (nextStringLength < 0)
+                    throw new JsonParseException("illegal byte string size", getCurrentLocation());
                 if (ctx.getExpected() == BContext.Expect.KEY) {
                     returnToken = JsonToken.FIELD_NAME;
                 } else {

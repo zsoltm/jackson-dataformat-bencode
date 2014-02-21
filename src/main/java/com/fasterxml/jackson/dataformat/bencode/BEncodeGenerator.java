@@ -9,7 +9,7 @@ import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.dataformat.bencode.context.BContext;
-import com.fasterxml.jackson.dataformat.bencode.context.IOOutputContext;
+import com.fasterxml.jackson.dataformat.bencode.context.StreamOutputContext;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,14 +27,14 @@ import static com.fasterxml.jackson.dataformat.bencode.BEncodeFormat.UTF_8;
  * Writer Based
  */
 public class BEncodeGenerator extends JsonGenerator {
-    private final IOOutputContext outputContext;
+    private final StreamOutputContext outputContext;
     private BContext bContext;
 
     private static final byte[] NULL_VALUE = ("4" + (char) STRING_SEPARATOR + "null").getBytes();
     private static final byte[] TRUE_VALUE = ("4" + (char) STRING_SEPARATOR + "true").getBytes();
     private static final byte[] FALSE_VALUE = ("5" + (char) STRING_SEPARATOR + "false").getBytes();
 
-    public BEncodeGenerator(int features, ObjectCodec codec, IOOutputContext outputContext) {
+    public BEncodeGenerator(int features, ObjectCodec codec, StreamOutputContext outputContext) {
         bContext = new BContext();
         this.outputContext = outputContext;
 //        _outputBuffer = ctxt.allocConcatBuffer();
