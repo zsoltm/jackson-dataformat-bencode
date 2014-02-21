@@ -16,38 +16,24 @@ public class NumberContextTest {
     public static final Charset LATIN_1 = Charset.forName("ISO-8859-1");
 
     @Test
-    public void testDetermineNumberLength() throws Exception {
-        NumberContext numberContext = createNumberContext("--1234567890asd", true);
-
-        assertThat(numberContext.determineNumberLength(2, 10), is(10));
-        assertThat(numberContext.determineNumberLength(1, 11), is(11)); // negative
-        assertThat(numberContext.determineNumberLength(3, 9), is(9));
-        assertThat(numberContext.determineNumberLength(3, 10), is(9));
-        assertThat(numberContext.determineNumberLength(2, 13), is(10));
-        assertThat(numberContext.determineNumberLength(1, 14), is(11));
-        assertThat(numberContext.determineNumberLength(0, 14), is(0));
-        assertThat(numberContext.determineNumberLength(12, 3), is(0));
-    }
-
-    @Test
     public void testDetermineNumberLengthOnInsufficientInput() throws Exception {
-        NumberContext numberContext = createNumberContext("-1", true);
+        NumberContext numberContext = createNumberContext("-", false);
 
         try {
-            numberContext.determineNumberLength(0, 1);
+            numberContext.guessType();
             fail("should throw if no digits after \"-\" sign");
         } catch (JsonParseException e) {
-            assertThat(e.getMessage(), is("tried to guess number with insufficient input available"));
+            assertThat(e.getMessage(), is("tried to guess number with insufficient input available\n" +
+                    " at [Source: UNKNOWN; line: 1, column: 0]"));
         }
 
         try {
-            numberContext.determineNumberLength(1, 0);
+            numberContext.guessType();
             fail("should throw if no input available");
         } catch (JsonParseException e) {
-            assertThat(e.getMessage(), is("tried to guess number with insufficient input available"));
+            assertThat(e.getMessage(), is("tried to guess number with insufficient input available\n" +
+                    " at [Source: UNKNOWN; line: 1, column: 0]"));
         }
-
-        assertThat(numberContext.determineNumberLength(0, 1), is(-1));
     }
 
     @Test
@@ -93,13 +79,34 @@ public class NumberContextTest {
         assertThat(numberContext.compareBytes("23356799".getBytes(LATIN_1), 1), is(-1));
     }
 
-    NumberContext createNumberContext(String input, boolean preRead) throws Exception {
+    @Test
+    public void testParseInt() throws Exception {
+        NumberContext numberContext = createNumberContext("2147483647", false);
+        try {
+            numberContext.parseInt();
+            fail("should throw if no guess performed before");
+        } catch (IllegalStateException e) {
+            assertThat(e.getMessage(), is("number size should be guessed before parse"));
+        }
+        assertThat(numberContext.guessType(), is(JsonParser.NumberType.INT));
+
+        try {
+            numberContext.parseLong();
+            fail("should throw if trying to parse a different type than what is guessed");
+        } catch (IllegalStateException e) {
+            assertThat(e.getMessage(), is("type mismatch"));
+        }
+
+        assertThat(numberContext.parseInt(), is(2147483647));
+    }
+
+    NumberContext createNumberContext(String input, boolean guess) throws Exception {
         NumberContext numberContext = new NumberContext(
-                new ByteArrayInputStream(input.getBytes(LATIN_1)),
+                new StreamInputContext(new ByteArrayInputStream(input.getBytes(LATIN_1))),
                 new MutableLocation());
-
-        if (preRead) numberContext.tryReadN(0, input.length()); // ~
-
+        if (guess) {
+            numberContext.guessType();
+        }
         return numberContext;
     }
 }

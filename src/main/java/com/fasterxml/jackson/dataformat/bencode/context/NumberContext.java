@@ -37,7 +37,7 @@ public class NumberContext {
         return c >= '0' && c <= '9';
     }
 
-    int determineNumberLength(int startOffset, int length) throws JsonParseException {
+    private int determineNumberLength(int startOffset, int length) throws JsonParseException {
         int offset = startOffset;
         boolean negative = length > 0 && numBuf[offset] == '-';
         if (negative) offset++;
@@ -100,7 +100,7 @@ public class NumberContext {
         numberLength = -1;
     }
 
-    private int determineParseLength(JsonParser.NumberType expectedTye, int positiveLen, int negativeLen) {
+    private int determineStart(JsonParser.NumberType expectedTye, int positiveLen, int negativeLen) {
         return currentType == expectedTye ?
                 (currentNegative ? 1 : 0) :
                 (currentNegative ?
@@ -109,19 +109,21 @@ public class NumberContext {
     }
 
     private int parseIntInternal() {
-        int endIndex = determineParseLength(JsonParser.NumberType.INT, MAX_INT_STR.length, MIN_INT_STR.length);
+        int ptr;
+        int startIndex = (ptr = determineStart(JsonParser.NumberType.INT, MAX_INT_STR.length, MIN_INT_STR.length));
         int value = 0;
 
-        while (currentPtr-- > endIndex) {
+        while (startIndex < currentPtr) {
             value *= 10;
-            value += numBuf[currentPtr] - '0';
+            value += numBuf[startIndex++] - '0';
         }
 
+        currentPtr = ptr;
         return value;
     }
 
     private long parseLongInternal(int carry) {
-        int endIndex = determineParseLength(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_INT_STR.length);
+        int endIndex = determineStart(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_INT_STR.length);
         long value = carry;
 
         while (currentPtr-- > endIndex) {
@@ -133,7 +135,7 @@ public class NumberContext {
     }
 
     private BigInteger parseBigIntegerInternal(long carry) {
-        int endIndex = determineParseLength(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_INT_STR.length);
+        int endIndex = determineStart(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_INT_STR.length);
         BigInteger value = BigInteger.valueOf(carry);
 
         while (currentPtr-- > endIndex) {
