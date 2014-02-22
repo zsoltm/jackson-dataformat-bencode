@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.nio.charset.Charset;
 
 public class NumberContext {
+    private static final long[] TEN_TBL = {10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
     private final StreamInputContext sic;
     private MutableLocation mutableLocation;
 
@@ -63,7 +64,7 @@ public class NumberContext {
 
     public JsonParser.NumberType guessType() throws IOException {
         // only int -> long -> BigInt need to be handled
-        final int readBytes = MIN_LONG_STR.length + 1;
+        final int readBytes = MAX_SUPPORTED_NUMBER_LENGTH + 1;
         sic.mark(readBytes);
 
         try {
@@ -71,8 +72,8 @@ public class NumberContext {
             if (numberLength == 0) throw new JsonParseException(
                     "tried to guess number with insufficient input available", mutableLocation.getJsonLocation(null));
 
-            currentPtr = numberLength;
             currentNegative = numBuf[0] == '-';
+            currentPtr = currentNegative ? 1 : 0;
             final byte[] int_str = currentNegative ? MIN_INT_STR : MAX_INT_STR;
             final byte[] long_str = currentNegative ? MIN_LONG_STR : MAX_LONG_STR;
 
@@ -100,49 +101,56 @@ public class NumberContext {
         numberLength = -1;
     }
 
-    private int determineStart(JsonParser.NumberType expectedTye, int positiveLen, int negativeLen) {
-        return currentType == expectedTye ?
-                (currentNegative ? 1 : 0) :
-                (currentNegative ?
-                        Math.max(numberLength - negativeLen, 0) + 2 :
-                        Math.max(numberLength - positiveLen, 0) + 1);
+    private int determineEnd(JsonParser.NumberType expectedTye, int positiveLen, int negativeLen) {
+        return Math.min(
+                currentPtr + (currentNegative ? negativeLen - 1 : positiveLen) - (currentType == expectedTye ? 0 : 1), numberLength);
     }
 
     private int parseIntInternal() {
-        int ptr;
-        int startIndex = (ptr = determineStart(JsonParser.NumberType.INT, MAX_INT_STR.length, MIN_INT_STR.length));
+        int end = determineEnd(JsonParser.NumberType.INT, MAX_INT_STR.length, MIN_INT_STR.length);
         int value = 0;
 
-        while (startIndex < currentPtr) {
+        for (int i = currentPtr; i < end; i++) {
             value *= 10;
-            value += numBuf[startIndex++] - '0';
+            value += numBuf[i] - '0';
         }
 
-        currentPtr = ptr;
+        currentPtr = end;
         return value;
     }
 
-    private long parseLongInternal(int carry) {
-        int endIndex = determineStart(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_INT_STR.length);
-        long value = carry;
+    private long parseLongInternal() {
+        int end = determineEnd(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_LONG_STR.length);
+        long value = 0;
+        int nextValue;
+        int prevCurrentPtr;
 
-        while (currentPtr-- > endIndex) {
-            value *= 10;
-            value += numBuf[currentPtr] - '0';
+        while (currentPtr < end) {
+            prevCurrentPtr = currentPtr;
+            nextValue = parseIntInternal();
+            if (value > 0) value *= TEN_TBL[currentPtr - prevCurrentPtr - 1];
+            value += nextValue;
         }
 
+        currentPtr = end;
         return value;
     }
 
-    private BigInteger parseBigIntegerInternal(long carry) {
-        int endIndex = determineStart(JsonParser.NumberType.LONG, MAX_LONG_STR.length, MIN_INT_STR.length);
-        BigInteger value = BigInteger.valueOf(carry);
+    private BigInteger parseBigIntegerInternal() {
+        int end = determineEnd(
+                JsonParser.NumberType.BIG_INTEGER, MAX_SUPPORTED_NUMBER_LENGTH, MAX_SUPPORTED_NUMBER_LENGTH);
+        BigInteger value = BigInteger.ZERO;
+        int nextValue;
+        int prevCurrentPtr;
 
-        while (currentPtr-- > endIndex) {
-            value = value.multiply(BigInteger.TEN);
-            value = value.add(BigInteger.valueOf(numBuf[currentPtr] - '0'));
+        while (currentPtr < end) {
+            prevCurrentPtr = currentPtr;
+            nextValue = parseIntInternal();
+            if (!value.equals(BigInteger.ZERO)) value = value.multiply(BigInteger.TEN.pow(currentPtr - prevCurrentPtr));
+            value = value.add(BigInteger.valueOf(nextValue));
         }
 
+        currentPtr = end;
         return value;
     }
 
@@ -157,7 +165,7 @@ public class NumberContext {
     public long parseLong() {
         ensureGuessPerformed();
         if (currentType != JsonParser.NumberType.LONG) throw new IllegalStateException("type mismatch");
-        long value = parseLongInternal(parseIntInternal());
+        long value = parseLongInternal();
         resetCurrentGuess();
         return currentNegative && value > 0 ? -value : value;
 
@@ -166,7 +174,7 @@ public class NumberContext {
     public BigInteger parseBigInteger() {
         ensureGuessPerformed();
         if (currentType != JsonParser.NumberType.BIG_INTEGER) throw new IllegalStateException("type mismatch");
-        BigInteger value = parseBigIntegerInternal(parseLongInternal(parseIntInternal()));
+        BigInteger value = parseBigIntegerInternal();
         resetCurrentGuess();
         return value;
     }
