@@ -92,7 +92,7 @@ public class NumberContext {
     }
 
     private void ensureGuessPerformedFor(JsonParser.NumberType expectedType) {
-        if (currentType != expectedType) throw new IllegalStateException("type mismatch");
+        if (currentType.ordinal() > expectedType.ordinal()) throw new IllegalStateException("integer overflow");
         if (numberLength < 0) throw new IllegalStateException("number size should be guessed before parse");
     }
 

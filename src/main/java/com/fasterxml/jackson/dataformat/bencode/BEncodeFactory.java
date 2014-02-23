@@ -3,7 +3,6 @@ package com.fasterxml.jackson.dataformat.bencode;
 import com.fasterxml.jackson.core.FormatSchema;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.core.Version;
@@ -12,6 +11,7 @@ import com.fasterxml.jackson.core.format.MatchStrength;
 import com.fasterxml.jackson.dataformat.bencode.context.StreamOutputContext;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -100,7 +100,11 @@ public class BEncodeFactory extends JsonFactory {
     }
 
     @Override
-    public JsonParser createParser(InputStream in) throws IOException, JsonParseException {
+    public JsonParser createParser(InputStream in) throws IOException {
         return new BEncodeParser(in, _objectCodec);
+    }
+
+    public JsonParser createParser(File f) throws IOException {
+        return createParser(new FileInputStream(f));
     }
 }

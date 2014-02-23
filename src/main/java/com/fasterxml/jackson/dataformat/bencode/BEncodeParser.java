@@ -85,9 +85,9 @@ public class BEncodeParser extends ParserMinimalBase {
                 sic.skip(1);
                 break;
             case INTEGER_PREFIX:
-                ctx.valueNext();
                 //noinspection ResultOfMethodCallIgnored
                 sic.skip(1);
+                numberContext.guessType();
                 _currToken = JsonToken.VALUE_NUMBER_INT;
                 break;
             default:
@@ -224,32 +224,44 @@ public class BEncodeParser extends ParserMinimalBase {
     }
 
     @Override
-    public Number getNumberValue() throws IOException {
-        ctx.valueNext();
-        return numberContext.parseNumber();
-    }
-
-    @Override
     public NumberType getNumberType() throws IOException {
         return numberContext.guessType();
     }
 
     @Override
+    public Number getNumberValue() throws IOException {
+        ctx.valueNext();
+        Number n = numberContext.parseNumber();
+        checkIntegerIsClosed();
+        return n;
+    }
+
+    @Override
     public int getIntValue() throws IOException {
         ctx.valueNext();
-        return numberContext.parseInt();
+        int value = numberContext.parseInt();
+        checkIntegerIsClosed();
+        return value;
     }
 
     @Override
     public long getLongValue() throws IOException {
         ctx.valueNext();
-        return numberContext.parseLong();
+        long value = numberContext.parseLong();
+        checkIntegerIsClosed();
+        return value;
     }
 
     @Override
     public BigInteger getBigIntegerValue() throws IOException {
         ctx.valueNext();
-        return numberContext.parseBigInteger();
+        BigInteger value = numberContext.parseBigInteger();
+        checkIntegerIsClosed();
+        return value;
+    }
+
+    private void checkIntegerIsClosed() throws IOException {
+        if (sic.read() != 'e') throw new JsonParseException("integer not closed", sic.getJsonLocation());
     }
 
     @Override
