@@ -2,45 +2,50 @@ package com.fasterxml.jackson.dataformat.bencode.context;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonStreamContext;
 import com.fasterxml.jackson.core.JsonToken;
 
-public class BContext {
-    enum Type {
-        ROOT, LIST, DICT
+public class BContext extends JsonStreamContext {
+    void incIndex() {
+        _index++;
     }
+
+//    enum Type {
+//        ROOT, LIST, DICT
+//    }
 
     public enum Expect {
         KEY, VALUE
     }
 
-    final BContext parent;
-    final Type type;
-
+    protected BContext parent;
     protected Expect expected = Expect.VALUE;
 
-    BContext(BContext parent, Type type) {
+    @Override
+    public JsonStreamContext getParent() {
+        return parent;
+    }
+
+    @Override
+    public String getCurrentName() {
+        return null;
+    }
+
+    BContext(BContext parent) {
         this.parent = parent;
-        this.type = type;
+        _type = TYPE_ROOT;
     }
 
     public BContext() {
-        this(null, Type.ROOT);
+        this(null);
     }
 
     public BContext createChildDictionary() {
-        return new BContextDictionary(this, Type.DICT);
+        return new BContextDictionary(this);
     }
 
     public BContext createChildList() {
-        return new BContextList(this, Type.LIST);
-    }
-
-    public final boolean inList() {
-        return type == Type.LIST;
-    }
-
-    public final boolean inDict() {
-        return type == Type.DICT;
+        return new BContextList(this);
     }
 
     public Expect valueNext() throws JsonProcessingException {

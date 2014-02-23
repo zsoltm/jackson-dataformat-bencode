@@ -161,7 +161,7 @@ public class BEncodeGenerator extends JsonGenerator {
 
     @Override
     public void writeEndArray() throws IOException {
-        if (!bContext.inList()) throw new JsonGenerationException("not in list");
+        if (!bContext.inArray()) throw new JsonGenerationException("not in list");
         bContext = bContext.changeToParent();
         outputContext.write(END_SUFFIX);
     }
@@ -175,7 +175,7 @@ public class BEncodeGenerator extends JsonGenerator {
 
     @Override
     public void writeEndObject() throws IOException {
-        if (!bContext.inDict()) throw new JsonGenerationException("not in dictionary");
+        if (!bContext.inObject()) throw new JsonGenerationException("not in dictionary");
         bContext = bContext.changeToParent();
         outputContext.write(END_SUFFIX);
     }

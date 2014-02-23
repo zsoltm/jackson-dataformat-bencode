@@ -7,14 +7,16 @@ import com.fasterxml.jackson.core.JsonToken;
 public class BContextDictionary extends BContext {
     private String prevKey;
 
-    public BContextDictionary(BContext parent, Type type) {
-        super(parent, type);
+    public BContextDictionary(BContext parent) {
+        this.parent = parent;
+        _type = TYPE_OBJECT;
         expected = Expect.KEY;
     }
 
     @Override
     public Expect valueNext() throws JsonProcessingException {
         if (expected != Expect.VALUE) throw new JsonGenerationException("unexpected value");
+        parent.incIndex();
         expected = Expect.KEY;
         return Expect.VALUE;
     }
@@ -35,9 +37,19 @@ public class BContextDictionary extends BContext {
     }
 
     @Override
+    public BContext createChildDictionary() {
+        return new BContextDictionary(this);
+    }
+
+    @Override
     public BContext changeToParent() throws JsonProcessingException {
         if (expected != Expect.KEY) throw new JsonGenerationException("uneven dictionary contents");
         return super.changeToParent();
+    }
+
+    @Override
+    public String getCurrentName() {
+        return prevKey;
     }
 
     @Override

@@ -2,7 +2,7 @@ package com.fasterxml.jackson.dataformat.bencode.context;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.dataformat.bencode.MutableLocation;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -11,7 +11,6 @@ import java.nio.charset.Charset;
 public class NumberContext {
     private static final long[] TEN_TBL = {10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
     private final StreamInputContext sic;
-    private MutableLocation mutableLocation;
 
     /** including possible leading minus (-) sign, should be >= 20. */
     public static final int MAX_SUPPORTED_NUMBER_LENGTH = 63; //
@@ -28,9 +27,8 @@ public class NumberContext {
     private int currentPtr;
     private boolean currentNegative;
 
-    public NumberContext(StreamInputContext sic, MutableLocation mutableLocation) {
+    public NumberContext(StreamInputContext sic) {
         this.sic = sic;
-        this.mutableLocation = mutableLocation;
         resetCurrentGuess();
     }
 
@@ -70,7 +68,7 @@ public class NumberContext {
         try {
             numberLength = determineNumberLength(0, sic.read(numBuf, 0, readBytes));
             if (numberLength == 0) throw new JsonParseException(
-                    "tried to guess number with insufficient input available", mutableLocation.getJsonLocation(null));
+                    "tried to guess number with insufficient input available", sic.getJsonLocation());
 
             currentNegative = numBuf[0] == '-';
             currentPtr = currentNegative ? 1 : 0;
@@ -93,7 +91,8 @@ public class NumberContext {
         }
     }
 
-    private void ensureGuessPerformed() {
+    private void ensureGuessPerformedFor(JsonParser.NumberType expectedType) {
+        if (currentType != expectedType) throw new IllegalStateException("type mismatch");
         if (numberLength < 0) throw new IllegalStateException("number size should be guessed before parse");
     }
 
@@ -103,7 +102,8 @@ public class NumberContext {
 
     private int determineEnd(JsonParser.NumberType expectedTye, int positiveLen, int negativeLen) {
         return Math.min(
-                currentPtr + (currentNegative ? negativeLen - 1 : positiveLen) - (currentType == expectedTye ? 0 : 1), numberLength);
+                currentPtr + (currentNegative ? negativeLen - 1 : positiveLen) - (currentType == expectedTye ? 0 : 1),
+                numberLength);
     }
 
     private int parseIntInternal() {
@@ -154,32 +154,35 @@ public class NumberContext {
         return value;
     }
 
-    public int parseInt() throws JsonParseException {
-        ensureGuessPerformed();
-        if (currentType != JsonParser.NumberType.INT) throw new IllegalStateException("type mismatch");
+    public int parseInt() throws IOException {
+        ensureGuessPerformedFor(JsonParser.NumberType.INT);
         int value = parseIntInternal();
+        //noinspection ResultOfMethodCallIgnored
+        sic.skip(currentPtr);
         resetCurrentGuess();
         return currentNegative && value > 0 ? -value : value;
     }
 
-    public long parseLong() {
-        ensureGuessPerformed();
-        if (currentType != JsonParser.NumberType.LONG) throw new IllegalStateException("type mismatch");
+    public long parseLong() throws IOException {
+        ensureGuessPerformedFor(JsonParser.NumberType.LONG);
         long value = parseLongInternal();
+        //noinspection ResultOfMethodCallIgnored
+        sic.skip(currentPtr);
         resetCurrentGuess();
         return currentNegative && value > 0 ? -value : value;
 
     }
 
-    public BigInteger parseBigInteger() {
-        ensureGuessPerformed();
-        if (currentType != JsonParser.NumberType.BIG_INTEGER) throw new IllegalStateException("type mismatch");
+    public BigInteger parseBigInteger() throws IOException{
+        ensureGuessPerformedFor(JsonParser.NumberType.BIG_INTEGER);
         BigInteger value = parseBigIntegerInternal();
+        //noinspection ResultOfMethodCallIgnored
+        sic.skip(currentPtr);
         resetCurrentGuess();
         return value;
     }
 
     public Number parseNumber() {
-        return null; // TODO implement
+        throw new NotImplementedException(); // TODO
     }
 }

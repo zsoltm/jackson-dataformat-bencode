@@ -2,7 +2,7 @@ package com.fasterxml.jackson.dataformat.bencode.context;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.dataformat.bencode.MutableLocation;
+import com.fasterxml.jackson.dataformat.bencode.location.MutableLocation;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -10,6 +10,7 @@ import java.math.BigInteger;
 import java.nio.charset.Charset;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -24,16 +25,14 @@ public class NumberContextTest {
             numberContext.guessType();
             fail("should throw if no digits after \"-\" sign");
         } catch (JsonParseException e) {
-            assertThat(e.getMessage(), is("tried to guess number with insufficient input available\n" +
-                    " at [Source: UNKNOWN; line: 1, column: 0]"));
+            assertThat(e.getMessage(), startsWith("tried to guess number with insufficient input available"));
         }
 
         try {
             numberContext.guessType();
             fail("should throw if no input available");
         } catch (JsonParseException e) {
-            assertThat(e.getMessage(), is("tried to guess number with insufficient input available\n" +
-                    " at [Source: UNKNOWN; line: 1, column: 0]"));
+            assertThat(e.getMessage(), startsWith("tried to guess number with insufficient input available"));
         }
     }
 
@@ -87,7 +86,7 @@ public class NumberContextTest {
             numberContext.parseInt();
             fail("should throw if no guess performed before");
         } catch (IllegalStateException e) {
-            assertThat(e.getMessage(), is("number size should be guessed before parse"));
+            assertThat(e.getMessage(), startsWith("number size should be guessed before parse"));
         }
         assertThat(numberContext.guessType(), is(JsonParser.NumberType.INT));
 
@@ -95,7 +94,7 @@ public class NumberContextTest {
             numberContext.parseLong();
             fail("should throw if trying to parse a different type than what is guessed");
         } catch (IllegalStateException e) {
-            assertThat(e.getMessage(), is("type mismatch"));
+            assertThat(e.getMessage(), startsWith("type mismatch"));
         }
 
         assertThat(numberContext.parseInt(), is(2147483647));
@@ -130,8 +129,8 @@ public class NumberContextTest {
 
     NumberContext createNumberContext(String input, boolean guess) throws Exception {
         NumberContext numberContext = new NumberContext(
-                new StreamInputContext(new ByteArrayInputStream(input.getBytes(LATIN_1))),
-                new MutableLocation());
+                new StreamInputContext(
+                        new ByteArrayInputStream(input.getBytes(LATIN_1))));
         if (guess) {
             numberContext.guessType();
         }
