@@ -148,12 +148,12 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public void overrideCurrentName(String name) {
-        throw new UnsupportedOperationException("please do not override names");
+        throw new UnsupportedOperationException("please do not override name");
     }
 
     @Override
     public String getText() throws IOException {
-        String returnValue = new String(getBinaryInternal(), UTF_8); // TODO add encoding support support
+        String returnValue = new String(getBinaryInternal(), UTF_8); // TODO add encoding support
         if (_currToken == JsonToken.FIELD_NAME) {
             ctx.keyNext(returnValue);
         } else ctx.valueNext();
@@ -178,7 +178,7 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public int getTextOffset() throws IOException {
-        throw new UnsupportedOperationException("using direct caharacter buffer access is not supported");
+        throw new UnsupportedOperationException("using direct character buffer access is not supported");
     }
 
     @Override
