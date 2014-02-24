@@ -10,4 +10,5 @@ public class BEncodeFormat {
     static final byte STRING_SEPARATOR = ':';
 
     static final Charset UTF_8 = Charset.forName("UTF-8");
+    static final Charset LATIN_1 = Charset.forName("ISO-8859-1");
 }

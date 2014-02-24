@@ -12,6 +12,7 @@ import com.fasterxml.jackson.dataformat.bencode.context.BContext;
 import com.fasterxml.jackson.dataformat.bencode.context.NumberContext;
 import com.fasterxml.jackson.dataformat.bencode.context.StreamInputContext;
 import com.fasterxml.jackson.dataformat.bencode.location.Location;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -147,12 +148,12 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public void overrideCurrentName(String name) {
-        throw new UnsupportedOperationException("please do not override name");
+        throw new UnsupportedOperationException("please do not override names");
     }
 
     @Override
     public String getText() throws IOException {
-        String returnValue = new String(getBinaryInternal(), UTF_8); // TODO add codec support
+        String returnValue = new String(getBinaryInternal(), UTF_8); // TODO add encoding support support
         if (_currToken == JsonToken.FIELD_NAME) {
             ctx.keyNext(returnValue);
         } else ctx.valueNext();
@@ -162,11 +163,7 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public char[] getTextCharacters() throws IOException {
-        String value = getText();
-        int len = value.length();
-        char[] ch = new char[len];
-        value.getChars(0, len, ch, 0);
-        return ch;
+        throw new NotImplementedException(); // hasTextCharacters is always false
     }
 
     @Override
@@ -285,6 +282,6 @@ public class BEncodeParser extends ParserMinimalBase {
     @Override
     public Object getEmbeddedObject() throws IOException {
         ctx.valueNext();
-        throw new UnsupportedOperationException("BEncode does not support decimal values");
+        throw new UnsupportedOperationException("BEncode does not support embedded objects");
     }
 }

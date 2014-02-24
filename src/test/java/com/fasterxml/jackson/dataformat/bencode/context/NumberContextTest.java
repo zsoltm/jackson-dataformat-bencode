@@ -2,7 +2,6 @@ package com.fasterxml.jackson.dataformat.bencode.context;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.dataformat.bencode.location.MutableLocation;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -81,23 +80,23 @@ public class NumberContextTest {
 
     @Test
     public void testParseInt() throws Exception {
-        NumberContext numberContext = createNumberContext("2147483647", false);
+        NumberContext numberContext = createNumberContext("21474836476", false);
         try {
             numberContext.parseInt();
             fail("should throw if no guess performed before");
         } catch (IllegalStateException e) {
             assertThat(e.getMessage(), startsWith("number size should be guessed before parse"));
         }
-        assertThat(numberContext.guessType(), is(JsonParser.NumberType.INT));
+        assertThat(numberContext.guessType(), is(JsonParser.NumberType.LONG));
 
         try {
-            numberContext.parseLong();
-            fail("should throw if trying to parse a different type than what is guessed");
+            numberContext.parseInt();
+            fail("should throw if parsing with lower than sufficient capacity type is attempted");
         } catch (IllegalStateException e) {
-            assertThat(e.getMessage(), startsWith("type mismatch"));
+            assertThat(e.getMessage(), startsWith("integer overflow"));
         }
 
-        assertThat(numberContext.parseInt(), is(2147483647));
+        assertThat(numberContext.parseLong(), is(21474836476L));
 
         numberContext = createNumberContext("345", true);
         assertThat(numberContext.parseInt(), is(345));

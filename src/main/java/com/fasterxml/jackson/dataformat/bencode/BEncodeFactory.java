@@ -10,13 +10,16 @@ import com.fasterxml.jackson.core.format.InputAccessor;
 import com.fasterxml.jackson.core.format.MatchStrength;
 import com.fasterxml.jackson.dataformat.bencode.context.StreamOutputContext;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Reader;
 import java.io.Writer;
+import java.net.URL;
 import java.nio.charset.Charset;
 
 public class BEncodeFactory extends JsonFactory {
@@ -106,5 +109,30 @@ public class BEncodeFactory extends JsonFactory {
 
     public JsonParser createParser(File f) throws IOException {
         return createParser(new FileInputStream(f));
+    }
+
+    @Override
+    public JsonParser createParser(Reader r) throws IOException {
+        throw new UnsupportedOperationException("BEncode doesn't support reader");
+    }
+
+    @Override
+    public JsonParser createParser(String content) throws IOException {
+        return super.createParser(content.getBytes(BEncodeFormat.LATIN_1));
+    }
+
+    @Override
+    public JsonParser createParser(byte[] data, int offset, int len) throws IOException {
+        return createParser(new ByteArrayInputStream(data, offset, len));
+    }
+
+    @Override
+    public JsonParser createParser(URL url) throws IOException {
+        return super.createParser(_optimizedStreamFromURL(url));
+    }
+
+    @Override
+    public JsonParser createParser(byte[] data) throws IOException {
+        return createParser(data, 0, data.length);
     }
 }
