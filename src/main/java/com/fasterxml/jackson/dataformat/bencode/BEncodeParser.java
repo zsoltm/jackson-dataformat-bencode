@@ -12,7 +12,6 @@ import com.fasterxml.jackson.dataformat.bencode.context.BContext;
 import com.fasterxml.jackson.dataformat.bencode.context.NumberContext;
 import com.fasterxml.jackson.dataformat.bencode.context.StreamInputContext;
 import com.fasterxml.jackson.dataformat.bencode.location.Location;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -171,7 +170,7 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public char[] getTextCharacters() throws IOException {
-        throw new NotImplementedException(); // hasTextCharacters is always false
+        throw new UnsupportedOperationException("please use getText()"); // hasTextCharacters is always false
     }
 
     @Override

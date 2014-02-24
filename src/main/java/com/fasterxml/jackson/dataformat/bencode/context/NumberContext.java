@@ -2,7 +2,6 @@ package com.fasterxml.jackson.dataformat.bencode.context;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -183,6 +182,6 @@ public class NumberContext {
     }
 
     public Number parseNumber() {
-        throw new NotImplementedException(); // TODO
+        throw new UnsupportedOperationException("not implemented yet");
     }
 }
