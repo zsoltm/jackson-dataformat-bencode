@@ -173,7 +173,7 @@ public class NumberContext {
 
     }
 
-    public BigInteger parseBigInteger() throws IOException{
+    public BigInteger parseBigInteger() throws IOException {
         ensureGuessPerformedFor(JsonParser.NumberType.BIG_INTEGER);
         BigInteger value = parseBigIntegerInternal();
         //noinspection ResultOfMethodCallIgnored

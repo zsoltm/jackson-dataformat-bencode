@@ -1,9 +1,9 @@
 package com.fasterxml.jackson.dataformat.bencode.context;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonStreamContext;
 import com.fasterxml.jackson.core.JsonToken;
+
+import java.io.IOException;
 
 public class BContext extends JsonStreamContext {
     void incIndex() {
@@ -48,18 +48,16 @@ public class BContext extends JsonStreamContext {
         return new BContextList(this);
     }
 
-    public Expect valueNext() throws JsonProcessingException {
+    public Expect valueNext() throws IOException {
         return expected;
     }
 
-    public Expect keyNext(String key) throws JsonProcessingException {
-        throw new JsonGenerationException("not in dictionary");
+    public Expect keyNext(String key) throws IOException {
+        throw new IOException("not in dictionary");
     }
 
-    public BContext changeToParent() throws JsonProcessingException {
-        if (parent == null) {
-            throw new JsonGenerationException("trying to access parent of root");
-        }
+    public BContext changeToParent() throws IOException {
+        if (parent == null) throw new IOException("trying to access parent of root");
         return parent;
     }
 

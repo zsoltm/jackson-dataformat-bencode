@@ -66,14 +66,14 @@ public class BEncodeParser extends ParserMinimalBase {
 
         switch (token) {
             case DICTIONARY_PREFIX:
-                ctx.valueNext();
+                valueNext();
                 ctx = ctx.createChildDictionary();
                 //noinspection ResultOfMethodCallIgnored
                 sic.skip(1);
                 _currToken = ctx.getStartToken();
                 break;
             case LIST_PREFIX:
-                ctx.valueNext();
+                valueNext();
                 ctx = ctx.createChildList();
                 //noinspection ResultOfMethodCallIgnored
                 sic.skip(1);
@@ -81,7 +81,11 @@ public class BEncodeParser extends ParserMinimalBase {
                 break;
             case END_SUFFIX:
                 _currToken = ctx.getEndToken();
-                ctx = ctx.changeToParent();
+                try {
+                    ctx = ctx.changeToParent();
+                } catch (IOException e) {
+                    throw new JsonParseException(e.getMessage(), sic.getJsonLocation());
+                }
                 //noinspection ResultOfMethodCallIgnored
                 sic.skip(1);
                 break;
@@ -155,8 +159,12 @@ public class BEncodeParser extends ParserMinimalBase {
     public String getText() throws IOException {
         String returnValue = new String(getBinaryInternal(), UTF_8); // TODO add encoding support
         if (_currToken == JsonToken.FIELD_NAME) {
-            ctx.keyNext(returnValue);
-        } else ctx.valueNext();
+            try {
+                ctx.keyNext(returnValue);
+            } catch (IOException e) {
+                throw new JsonParseException(e.getMessage(), sic.getJsonLocation());
+            }
+        } else valueNext();
 
         return returnValue;
     }
@@ -183,8 +191,16 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public byte[] getBinaryValue(Base64Variant b64variant) throws IOException {
-        ctx.valueNext();
+        valueNext();
         return getBinaryInternal();
+    }
+
+    private void valueNext() throws IOException {
+        try {
+            ctx.valueNext();
+        } catch (IOException e) {
+            throw new JsonParseException(e.getMessage(), sic.getJsonLocation());
+        }
     }
 
     private byte[] getBinaryInternal() throws IOException {
@@ -227,7 +243,7 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public Number getNumberValue() throws IOException {
-        ctx.valueNext();
+        valueNext();
         Number n = numberContext.parseNumber();
         checkIntegerIsClosed();
         return n;
@@ -235,7 +251,7 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public int getIntValue() throws IOException {
-        ctx.valueNext();
+        valueNext();
         int value = numberContext.parseInt();
         checkIntegerIsClosed();
         return value;
@@ -243,7 +259,7 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public long getLongValue() throws IOException {
-        ctx.valueNext();
+        valueNext();
         long value = numberContext.parseLong();
         checkIntegerIsClosed();
         return value;
@@ -251,7 +267,7 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public BigInteger getBigIntegerValue() throws IOException {
-        ctx.valueNext();
+        valueNext();
         BigInteger value = numberContext.parseBigInteger();
         checkIntegerIsClosed();
         return value;
@@ -263,25 +279,25 @@ public class BEncodeParser extends ParserMinimalBase {
 
     @Override
     public float getFloatValue() throws IOException {
-        ctx.valueNext();
+        valueNext();
         throw new UnsupportedOperationException("BEncode does not support float values");
     }
 
     @Override
     public double getDoubleValue() throws IOException {
-        ctx.valueNext();
+        valueNext();
         throw new UnsupportedOperationException("BEncode does not support double values");
     }
 
     @Override
     public BigDecimal getDecimalValue() throws IOException {
-        ctx.valueNext();
+        valueNext();
         throw new UnsupportedOperationException("BEncode does not support decimal values");
     }
 
     @Override
     public Object getEmbeddedObject() throws IOException {
-        ctx.valueNext();
+        valueNext();
         throw new UnsupportedOperationException("BEncode does not support embedded objects");
     }
 }

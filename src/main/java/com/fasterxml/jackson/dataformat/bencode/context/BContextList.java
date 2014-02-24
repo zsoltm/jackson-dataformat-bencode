@@ -1,7 +1,8 @@
 package com.fasterxml.jackson.dataformat.bencode.context;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
+
+import java.io.IOException;
 
 public class BContextList extends BContext {
 
@@ -12,7 +13,7 @@ public class BContextList extends BContext {
     }
 
     @Override
-    public Expect valueNext() throws JsonProcessingException {
+    public Expect valueNext() throws IOException {
         _index++;
         return super.valueNext();
     }

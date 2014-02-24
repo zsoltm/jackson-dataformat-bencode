@@ -1,8 +1,8 @@
 package com.fasterxml.jackson.dataformat.bencode.context;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
+
+import java.io.IOException;
 
 public class BContextDictionary extends BContext {
     private String prevKey;
@@ -14,20 +14,20 @@ public class BContextDictionary extends BContext {
     }
 
     @Override
-    public Expect valueNext() throws JsonProcessingException {
-        if (expected != Expect.VALUE) throw new JsonGenerationException("unexpected value");
+    public Expect valueNext() throws IOException {
+        if (expected != Expect.VALUE) throw new IOException("unexpected value");
         parent.incIndex();
         expected = Expect.KEY;
         return Expect.VALUE;
     }
 
     @Override
-    public Expect keyNext(String key) throws JsonProcessingException {
-        if (expected != Expect.KEY) throw new JsonGenerationException("unexpected key");
+    public Expect keyNext(String key) throws IOException {
+        if (expected != Expect.KEY) throw new IOException("unexpected key");
         if (prevKey != null) {
             int compareResult = prevKey.compareTo(key);
             if (compareResult >= 0) {
-                throw new JsonGenerationException(compareResult == 0 ?
+                throw new IOException(compareResult == 0 ?
                         "duplicate dictionary key" : "keys must be in lexicographically ascending order");
             }
         }
@@ -42,8 +42,8 @@ public class BContextDictionary extends BContext {
     }
 
     @Override
-    public BContext changeToParent() throws JsonProcessingException {
-        if (expected != Expect.KEY) throw new JsonGenerationException("uneven dictionary contents");
+    public BContext changeToParent() throws IOException {
+        if (expected != Expect.KEY) throw new IOException("uneven dictionary contents");
         return super.changeToParent();
     }
 
