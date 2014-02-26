@@ -39,7 +39,7 @@ mapper.writeValue(new File("user.bencode"), u);
 
 Where the user class used above is a simple POJO:
 
-```
+```java
 public class User {
     public enum Gender { MALE, FEMALE }
 
