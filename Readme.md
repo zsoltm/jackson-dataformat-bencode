@@ -1,5 +1,7 @@
 # Overview
 
+[![Build Status](https://travis-ci.org/zsoltm/jackson-dataformat-bencode.png?branch=master)](https://travis-ci.org/zsoltm/jackson-dataformat-bencode)
+
 This project contains [Jackson](http://http://wiki.fasterxml.com/JacksonHome) extension component for reading and
 writing [Bencode](http://en.wikipedia.org/wiki/Bencode) encoded data, either as "raw" data (sequence of
 String arrays), or via data binding to/from Java Objects (POJOs).
