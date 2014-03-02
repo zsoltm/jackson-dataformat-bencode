@@ -13,7 +13,7 @@
 
     <groupId>com.fasterxml.jackson.dataformat</groupId>
     <artifactId>jackson-dataformat-bencode</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>2.3.0.0</version>
 
     <name>Jackson-dataformat-BEncode</name>
 
